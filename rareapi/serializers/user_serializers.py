@@ -6,7 +6,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
     """Minimal user representation for nesting inside posts, comments, etc."""
     class Meta:
         model = RareUser
-        fields = ['id', 'username']
+        fields = ['id', 'username', 'first_name', 'last_name']
 
 
 class ProfileDetailSerializer(serializers.ModelSerializer):
@@ -16,13 +16,14 @@ class ProfileDetailSerializer(serializers.ModelSerializer):
     user_type = serializers.SerializerMethodField()
     is_subscribed = serializers.SerializerMethodField()
     subscriber_count = serializers.SerializerMethodField()
+    post_count = serializers.SerializerMethodField()
 
     class Meta:
         model = RareUser
         fields = [
-            'id', 'full_name', 'username', 'email',
-            'profile_image_url', 'created_on', 'user_type',
-            'is_subscribed', 'subscriber_count',
+            'id', 'full_name', 'first_name', 'last_name', 'username', 'email',
+            'bio', 'profile_image_url', 'created_on', 'user_type',
+            'is_subscribed', 'subscriber_count', 'post_count',
         ]
 
     def get_full_name(self, obj):
@@ -42,6 +43,9 @@ class ProfileDetailSerializer(serializers.ModelSerializer):
     def get_subscriber_count(self, obj):
         return obj.subscribers.filter(ended_on__isnull=True).count()
 
+    def get_post_count(self, obj):
+        return obj.posts.filter(approved=True).count()
+
 
 class ProfileListSerializer(serializers.ModelSerializer):
     """Slim user profile for admin list endpoint."""
@@ -57,6 +61,12 @@ class ProfileListSerializer(serializers.ModelSerializer):
 
     def get_user_type(self, obj):
         return 'Admin' if obj.is_staff else 'Author'
+
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RareUser
+        fields = ['first_name', 'last_name', 'bio']
 
 
 class RegisterSerializer(serializers.ModelSerializer):

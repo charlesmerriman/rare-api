@@ -11,7 +11,7 @@ graph TB
 
     subgraph API["Django REST API (localhost:8000)"]
         direction TB
-        DRF["rare-api<br/><i>Python 3 · Django 4.2 · DRF 3.15</i><br/>─────────────────────<br/>• 44 REST endpoints (JSON)<br/>• Token authentication (DRF authtoken)<br/>• Function-based views + serializers<br/>• Media files served at /media/<br/>• Two-admin voting logic in services/admin_actions.py"]
+        DRF["rare-api<br/><i>Python 3 · Django 4.2 · DRF 3.15</i><br/>─────────────────────<br/>• 36 REST endpoints (JSON)<br/>• Token authentication (DRF authtoken)<br/>• Function-based views + serializers<br/>• Media files served at /media/<br/>• Two-admin voting logic in services/admin_actions.py"]
     end
 
     subgraph DB["PostgreSQL 16 (localhost:5432) — Docker"]
