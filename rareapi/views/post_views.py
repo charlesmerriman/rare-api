@@ -1,5 +1,6 @@
 import os
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -34,10 +35,14 @@ def post_list(request):
         )
         return Response(PostDetailSerializer(post).data, status=201)
 
+    today = timezone.now().date()
     posts = (
         Post.objects
         .select_related('user', 'category')
-        .filter(approved=True, publication_date__lte=timezone.now().date())
+        .filter(
+            Q(approved=True, publication_date__lte=today) |
+            Q(approved=False, user=request.user)
+        )
         .order_by('-publication_date')
     )
     return Response(PostListSerializer(posts, many=True).data)
@@ -222,16 +227,22 @@ def tag_post_list(request, tag_id):
 @permission_classes([IsAuthenticated])
 def search_posts(request):
     query = request.query_params.get('q', '').strip()
-    if not query:
+    author = request.query_params.get('author', '').strip()
+
+    if not query and not author:
         return Response([])
 
     posts = (
         Post.objects
         .select_related('user', 'category')
-        .filter(title__icontains=query, approved=True, publication_date__lte=timezone.now().date())
-        .order_by('-publication_date')
+        .filter(approved=True, publication_date__lte=timezone.now().date())
     )
-    return Response(PostListSerializer(posts, many=True).data)
+    if query:
+        posts = posts.filter(title__icontains=query)
+    if author:
+        posts = posts.filter(user__username__icontains=author)
+
+    return Response(PostListSerializer(posts.order_by('-publication_date'), many=True).data)
 
 
 @api_view(['PUT'])
