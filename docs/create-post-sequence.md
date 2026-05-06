@@ -60,7 +60,7 @@ sequenceDiagram
 
         View->>View: Validate request.user == post.user
 
-        View->>FileSystem: Write image chunks to<br/>media/images/post_<id>_<filename>
+        View->>FileSystem: Write image chunks to<br/>media/post_images/post_<id>_<filename>
         FileSystem-->>View: File saved
 
         View->>ORM: post.image_url = absolute_url<br/>post.save()

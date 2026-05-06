@@ -1,6 +1,6 @@
 import os
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -39,6 +39,10 @@ def post_list(request):
     posts = (
         Post.objects
         .select_related('user', 'category')
+        .annotate(
+            comment_count=Count('comments', distinct=True),
+            reaction_count=Count('post_reactions', distinct=True),
+        )
         .filter(
             Q(approved=True, publication_date__lte=today) |
             Q(approved=False, user=request.user)
