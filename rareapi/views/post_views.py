@@ -47,13 +47,20 @@ def post_list(request):
             Q(approved=True, publication_date__lte=today) |
             Q(approved=False, user=request.user)
         )
-        .order_by('-publication_date')
     )
 
     # Optional server-side category filter
     category_id = request.query_params.get('category_id')
     if category_id:
         posts = posts.filter(category_id=category_id)
+
+    # Sort order — allowlist prevents arbitrary field injection
+    _SORT_MAP = {
+        'most_commented': '-comment_count',
+        'most_reactions': '-reaction_count',
+    }
+    sort = request.query_params.get('sort', 'newest')
+    posts = posts.order_by(_SORT_MAP.get(sort, '-publication_date'))
 
     # Paginate: 10 posts per page
     page_size = 10

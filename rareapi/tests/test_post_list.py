@@ -4,6 +4,9 @@ from rest_framework.authtoken.models import Token
 from rareapi.models import RareUser
 from rareapi.models.post import Post
 from rareapi.models.category import Category
+from rareapi.models.comment import Comment
+from rareapi.models.post_reaction import PostReaction
+from rareapi.models.reaction import Reaction
 
 
 @pytest.fixture
@@ -169,3 +172,47 @@ class TestPostListPagination:
         client = authed_client(api_client, regular_user)
         res = client.get(f"/posts?category_id={category.id}")
         assert res.json()["count"] == 3
+
+
+class TestPostListSorting:
+    def test_default_sort_is_newest_first(self, api_client, regular_user, category):
+        make_post(regular_user, category, title="Old Post", publication_date="2024-01-01")
+        make_post(regular_user, category, title="New Post", publication_date="2025-06-01")
+        make_post(regular_user, category, title="Middle Post", publication_date="2024-09-01")
+        client = authed_client(api_client, regular_user)
+        res = client.get("/posts")
+        titles = [p["title"] for p in res.json()["results"]]
+        assert titles.index("New Post") < titles.index("Middle Post") < titles.index("Old Post")
+
+    def test_sort_by_most_commented(self, api_client, regular_user, other_user, category):
+        quiet_post = make_post(regular_user, category, title="Quiet")
+        popular_post = make_post(regular_user, category, title="Popular")
+        # Give popular_post 3 comments, quiet_post 1
+        for _ in range(3):
+            Comment.objects.create(post=popular_post, author=other_user, content="x")
+        Comment.objects.create(post=quiet_post, author=other_user, content="x")
+        client = authed_client(api_client, regular_user)
+        res = client.get("/posts?sort=most_commented")
+        titles = [p["title"] for p in res.json()["results"]]
+        assert titles.index("Popular") < titles.index("Quiet")
+
+    def test_sort_by_most_reactions(self, api_client, regular_user, other_user, category):
+        low_post = make_post(regular_user, category, title="Low Reactions")
+        high_post = make_post(regular_user, category, title="High Reactions")
+        reaction = Reaction.objects.create(label="Like", image_url="")
+        # Give high_post 2 reactions, low_post 1
+        PostReaction.objects.create(post=high_post, user=regular_user, reaction=reaction)
+        PostReaction.objects.create(post=high_post, user=other_user, reaction=reaction)
+        PostReaction.objects.create(post=low_post, user=regular_user, reaction=reaction)
+        client = authed_client(api_client, regular_user)
+        res = client.get("/posts?sort=most_reactions")
+        titles = [p["title"] for p in res.json()["results"]]
+        assert titles.index("High Reactions") < titles.index("Low Reactions")
+
+    def test_unknown_sort_param_falls_back_to_newest(self, api_client, regular_user, category):
+        make_post(regular_user, category, title="Old Post", publication_date="2024-01-01")
+        make_post(regular_user, category, title="New Post", publication_date="2025-06-01")
+        client = authed_client(api_client, regular_user)
+        res = client.get("/posts?sort=bogus_value")
+        titles = [p["title"] for p in res.json()["results"]]
+        assert titles.index("New Post") < titles.index("Old Post")
