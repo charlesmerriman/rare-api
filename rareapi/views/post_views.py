@@ -49,7 +49,33 @@ def post_list(request):
         )
         .order_by('-publication_date')
     )
-    return Response(PostListSerializer(posts, many=True).data)
+
+    # Optional server-side category filter
+    category_id = request.query_params.get('category_id')
+    if category_id:
+        posts = posts.filter(category_id=category_id)
+
+    # Paginate: 10 posts per page
+    page_size = 10
+    try:
+        page = max(1, int(request.query_params.get('page', 1)))
+    except (ValueError, TypeError):
+        page = 1
+
+    total = posts.count()
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    # Clamp page to valid range so an out-of-range request still returns a sane envelope
+    page = min(page, total_pages)
+
+    start = (page - 1) * page_size
+    posts_page = posts[start:start + page_size]
+
+    return Response({
+        'count': total,
+        'total_pages': total_pages,
+        'page': page,
+        'results': PostListSerializer(posts_page, many=True).data,
+    })
 
 
 @api_view(['GET', 'PUT', 'DELETE'])
